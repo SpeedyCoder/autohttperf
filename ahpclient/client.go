@@ -4,7 +4,7 @@ import "flag"
 import "fmt"
 import "log"
 import "os"
-import "rpc"
+import "net/rpc"
 import "time"
 
 // Runs a benchmark distributed over a set of clients. Returns a slice of the
@@ -17,7 +17,7 @@ func RunDistributedBenchmark(workers []*Worker, args *Args) ([]*PerfData, bool) 
 	// results or anything at the current time.
 
 	// Generate a simple UID based on the current time in nanoseconds.
-	nanotime := time.Nanoseconds()
+	nanotime := time.Now().UnixNano()
 	nanoid := fmt.Sprintf("%#v", nanotime)
 
 	numWorkers := len(workers)
@@ -49,7 +49,7 @@ func RunDistributedBenchmark(workers []*Worker, args *Args) ([]*PerfData, bool) 
 			worker.args = wargs
 			worker.result = result
 			worker.call = call
-			worker.date = time.Seconds()
+			worker.date = time.Now().UnixNano() / 1000000000
 		}
 	}
 
@@ -65,13 +65,13 @@ func RunDistributedBenchmark(workers []*Worker, args *Args) ([]*PerfData, bool) 
 			call := <-worker.call.Done
 			log.Printf("[%s] Got results", worker.id)
 			if call.Error != nil {
-				log.Printf("[%s] Error state reported: %s", worker.id, call.Error.String())
+				log.Printf("[%s] Error state reported: %s", worker.id, call.Error.Error())
 				success = false
 			} else {
 				perfdata, err := ParseResults(worker.result.Stdout, nanoid, worker.date, worker.args)
 				if err != nil {
 					// Error parsing, report this
-					log.Printf("[%s] Error parsing perf data: %s\n", worker.id, err.String())
+					log.Printf("[%s] Error parsing perf data: %s\n", worker.id, err.Error())
 					success = false
 				}
 				results = append(results, perfdata)
@@ -166,7 +166,7 @@ func StressTestConnections(workers []*Worker) {
 
 		// Perform any sleep, as directed
 		log.Printf("Sleeping for %d seconds", *sleep)
-		var sleeptime int64 = int64(*sleep) * 1000000000
+		var sleeptime time.Duration = time.Duration(int64(*sleep) * 1000000000)
 		time.Sleep(sleeptime)
 		log.Printf("Done sleeping")
 	}

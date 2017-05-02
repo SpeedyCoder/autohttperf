@@ -33,14 +33,16 @@ func WriteTSVParseData(w io.Writer, data *PerfData) {
 	columns := make([]string, 0, numColumns)
 
 	// Turn the struct into a Type so we can use reflection
-	ptr, ok := reflect.NewValue(data).(*reflect.PtrValue)
-	if !ok {
+	ptr := reflect.ValueOf(data)
+	kind := ptr.Kind()
+	if kind != reflect.Ptr {
 		log.Fatalf("Could not convert results into a pointer value")
 		return
 	}
 
-	val, ok := ptr.Elem().(*reflect.StructValue)
-	if !ok {
+	val := reflect.Indirect(ptr)
+	kind = val.Kind();
+	if kind != reflect.Struct {
 		log.Fatalf("Failed when reflecting on struct")
 		return
 	}
@@ -50,24 +52,22 @@ func WriteTSVParseData(w io.Writer, data *PerfData) {
 
 	for _, field := range fieldNames {
 		column := val.FieldByName(field)
-		if column == nil {
+		if !column.IsValid() {
 			log.Fatalf("Failed when reflecting field %s", field)
 		}
 
-		switch t := column.(type) {
-		case *reflect.StringValue:
-			svalue := column.(*reflect.StringValue)
-			scolumn := svalue.Get()
-			columns = append(columns, scolumn)
-		case *reflect.FloatValue:
-			fvalue := column.(*reflect.FloatValue)
-			fcolumn := fvalue.Get()
-			columns = append(columns, fmt.Sprintf("%#v", fcolumn))
-		case *reflect.IntValue:
-			ivalue := column.(*reflect.IntValue)
-			icolumn := ivalue.Get()
-			columns = append(columns, fmt.Sprintf("%#v", icolumn))
+		t := column.Kind()
+		switch t {
+		case reflect.String:
+			columns = append(columns, column.String())
+		case reflect.Float64:
+			columns = append(columns, fmt.Sprintf("%#v", column.Float()))
+		case reflect.Int:
+			columns = append(columns, fmt.Sprintf("%#v", column.Int()))
+		case reflect.Int64:
+			columns = append(columns, fmt.Sprintf("%#v", column.Int()))
 		default:
+			log.Println("Type: ", t.String())
 			log.Fatalf("Got a field we cannot handle: %s", field)
 		}
 	}

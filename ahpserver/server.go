@@ -2,13 +2,13 @@ package main
 
 import "flag"
 import "fmt"
-import "exec"
-import "http"
+import "os/exec"
+import "net/http"
 import "io/ioutil"
 import "log"
 import "net"
-import "os"
-import "rpc"
+import "net/rpc"
+import "errors"
 
 type Args struct {
 	Host                  string
@@ -37,18 +37,17 @@ const (
 	ERR_READERR      = "Could not read stderr: %s"
 )
 
-func (h *HTTPerf) Benchmark(args *Args, result *Result) os.Error {
+func (h *HTTPerf) Benchmark(args *Args, result *Result) error {
 	// Try to find the 'httpperf' command, which must exist in the PATH
 	// of the current user/environment.
 
 	perfexec, err := exec.LookPath("httperf")
 	if err != nil {
-		return os.NewError(fmt.Sprintf(ERR_EXECNOTFOUND, err.String()))
+		return errors.New(fmt.Sprintf(ERR_EXECNOTFOUND, err.Error()))
 	}
 
 	// Build the httperf commandline and build a result to return
 	argv := []string{
-		perfexec,
 		"--server", args.Host,
 		"--port", fmt.Sprintf("%d", args.Port),
 		"--uri", args.URL,
@@ -62,39 +61,43 @@ func (h *HTTPerf) Benchmark(args *Args, result *Result) os.Error {
 	log.Printf("   [%p] Input arguments: %#v", args, args)
 	log.Printf("   [%p] Commandline arguments: %#v", args, argv)
 
-	cmd, err := exec.Run(argv[0], argv, nil, "", exec.DevNull, exec.Pipe, exec.Pipe)
+	cmd := exec.Command(perfexec, argv...)
+	outpipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return os.NewError(fmt.Sprintf(ERR_RUNFAILED, err.String()))
+		return errors.New(fmt.Sprintf(ERR_READOUT, err.Error()))
+	}
+	errpipe, err := cmd.StderrPipe()
+	if err != nil {
+		return errors.New(fmt.Sprintf(ERR_READOUT, err.Error()))
 	}
 
-	defer cmd.Close()
+	err = cmd.Start()
+	if err != nil {
+		return errors.New(fmt.Sprintf(ERR_RUNFAILED, err.Error()))
+	}
 
 	log.Printf("   [%p] Process successfully started with PID: %d", args, cmd.Process.Pid)
 
-	output, err := ioutil.ReadAll(cmd.Stdout)
+	output, err := ioutil.ReadAll(outpipe)
 	if err != nil {
-		return os.NewError(fmt.Sprintf(ERR_READOUT, err.String()))
+		return errors.New(fmt.Sprintf(ERR_READOUT, err.Error()))
 	}
-	errout, err := ioutil.ReadAll(cmd.Stderr)
+	errout, err := ioutil.ReadAll(errpipe)
 	if err != nil {
-		return os.NewError(fmt.Sprintf(ERR_READERR, err.String()))
+		return errors.New(fmt.Sprintf(ERR_READERR, err.Error()))
 	}
 
 	log.Printf("   [%p] Finished reading stdout and stderr", args)
 
-	w, err := cmd.Wait(0)
-
+	err = cmd.Wait()
 	log.Printf("-- [%p] Command joined and finished", args)
 
 	if err != nil {
-		return os.NewError(fmt.Sprintf(ERR_WAIT, cmd.Process.Pid))
-	} else if !w.Exited() {
-		return os.NewError(fmt.Sprintf(ERR_NOTEXITED, w.String()))
+		return errors.New(fmt.Sprintf(ERR_WAIT, cmd.Process.Pid))
 	}
 
 	result.Stdout = string(output)
 	result.Stderr = string(errout)
-	result.ExitStatus = int(w.WaitStatus)
 
 	return nil
 }

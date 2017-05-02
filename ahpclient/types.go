@@ -1,6 +1,6 @@
 package main
 
-import "rpc"
+import "net/rpc"
 
 type Args struct {
 	Host                  string
