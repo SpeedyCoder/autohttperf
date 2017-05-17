@@ -33,6 +33,7 @@ func RunDistributedBenchmark(workers []*Worker, args *Args) ([]*PerfData, bool) 
 			args.ConnectionRate / numWorkers,
 			args.RequestsPerConnection,
 			args.Duration,
+			args.Timeout,
 		}
 
 		result := new(Result)
@@ -191,6 +192,7 @@ func RunManualBenchmark(workers []*Worker) {
 		*connRate,
 		*requests,
 		*duration,
+		*timeout,
 	}
 
 	data, ok := RunDistributedBenchmark(workers, args)
