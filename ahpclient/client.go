@@ -229,8 +229,8 @@ var server *string = flag.String("server", "localhost", "The hostname or IP addr
 var port *int = flag.Int("port", 80, "The port on which to bind the server")
 var url *string = flag.String("url", "/", "The URL to be requested")
 var timeout *int = flag.Int("timeout", 5, "Amount of time before a request is considered unfulfilled")
-var repeat *int = flag.Int("repeat", 5, "Number of times the call is repeated")
-var increment *int = flag.Int("increment", 120, "Value that is added to the connection rate after each repeat")
+var repeat *int = flag.Int("repeat", 10, "Number of times the call is repeated")
+var increment *int = flag.Int("increment", 100, "Value that is added to the connection rate after each repeat")
 
 // Flags that can be used to turn a mode on or off, these are combined and
 // will be executed in the order they are specified here, not the order they
@@ -266,41 +266,41 @@ func main() {
 		return
 	}
 
-	for i := 0; i < *repeat; i++ {
-		log.Println("Connection Rate:", *connRate)
+	// Build a slice of RPC clients, as specified by the user as arguments
+	workers := make([]*Worker, 0, 5)
 
-		// Build a slice of RPC clients, as specified by the user as arguments
-		workers := make([]*Worker, 0, 5)
+	for idx, arg := range flag.Args() {
+		log.Printf("Opening RPC connection to %s", arg)
+		client, err := rpc.DialHTTP("tcp", arg)
+		log.Printf("New RPC connection %p", client)
 
-		for idx, arg := range flag.Args() {
-			log.Printf("Opening RPC connection to %s", arg)
-			client, err := rpc.DialHTTP("tcp", arg)
-			log.Printf("New RPC connection %p", client)
-
-			if err != nil {
-				log.Fatalf("Could not connect to client %s: %s", arg, err)
-			}
-
-			id := fmt.Sprintf("%s:%d", arg, idx)
-			worker := &Worker{arg, id, client, nil, nil, 0, nil}
-			workers = append(workers, worker)
+		if err != nil {
+			log.Fatalf("Could not connect to client %s: %s", arg, err)
 		}
 
-		if !*modeStressConn && !*modeStressReqs && !*modeManual {
-			log.Fatalf("No mode selected, please supply one of -stressconn, -stressreqs or -manual")
-		}
-
-		if *modeManual {
-			RunManualBenchmark(workers)
-		}
-
-		if *modeStressConn {
-			StressTestConnections(workers)
-		}
-
-		if *modeStressReqs {
-			StressTestRequests(workers)
-		}
-		*connRate += *increment
+		id := fmt.Sprintf("%s:%d", arg, idx)
+		worker := &Worker{arg, id, client, nil, nil, 0, nil}
+		workers = append(workers, worker)
 	}
+
+	if !*modeStressConn && !*modeStressReqs && !*modeManual {
+		log.Fatalf("No mode selected, please supply one of -stressconn, -stressreqs or -manual")
+	}
+
+	if *modeManual {
+		for i := 0; i < *repeat; i++ {
+			log.Println("Connection Rate:", *connRate)
+			RunManualBenchmark(workers)
+			*connRate += *increment
+		}
+	}
+
+	if *modeStressConn {
+		StressTestConnections(workers)
+	}
+
+	if *modeStressReqs {
+		StressTestRequests(workers)
+	}
+
 }
