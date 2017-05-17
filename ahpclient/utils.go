@@ -114,6 +114,7 @@ func PrintAggregateStats(perfdata []*PerfData, workers int) {
 	var concurr float64 = 0
 	var connTimeAvg float64 = 0
 	var replyTime float64 = 0
+	var replyStatus2 float64 = 0
 	
 	for _, data := range perfdata {
 		connRate += data.ConnectionsPerSecond
@@ -126,6 +127,7 @@ func PrintAggregateStats(perfdata []*PerfData, workers int) {
 		concurr += data.ConcurrentConnections
 		repliesPerSec += data.RepliesPerSecAvg
 		replyTime += data.ReplyTimeResponse
+		replyStatus2 += data.ReplyStatus_2xx
 	}
 
 	fmt.Printf("Connection rate: %.2f\n", connRate)
@@ -139,15 +141,17 @@ func PrintAggregateStats(perfdata []*PerfData, workers int) {
 	fmt.Printf("ConnectionTimeAvg: %.2f\n", connTimeAvg/float64(workers))
 	fmt.Println("ConcurrentConnections:", int(concurr))
 	fmt.Printf("RepliesPerSecAvg: %.2f\n", repliesPerSec/float64(workers))
-	fmt.Printf("ReplyTimeResponse: %.2f\n\n", replyTime/float64(workers))
+	fmt.Printf("ReplyTimeResponse: %.2f\n", replyTime/float64(workers))
+	fmt.Printf("ReplyStatus_2xx: %.v\n\n", replyStatus2)
 
-	res := fmt.Sprintf("%.2f|%.2f|%v|%v|%v|%.2f|%.2f|%v|%.2f|%.2f\n", 
+	res := fmt.Sprintf("%.2f|%.2f|%v|%v|%v|%.2f|%.2f|%v|%.2f|%.2f|%v\n", 
 		connRate, reqRate,
 		int64(totalReq), int64(totalRep), int64(errs),
 		totalRep/totalReq, 
 		connTimeAvg/float64(workers), int(concurr), 
 		repliesPerSec/float64(workers),
-		replyTime/float64(workers))
+		replyTime/float64(workers),
+		replyStatus2,)
 	fmt.Println(res)
 
 	// Write the result to the file
