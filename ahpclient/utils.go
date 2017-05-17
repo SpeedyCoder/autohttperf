@@ -88,3 +88,52 @@ func SetHasErrors(perfdata []*PerfData, threshold int) bool {
 
 	return false
 }
+
+func HasClientErrors(perfdata []*PerfData) bool {
+	total := 0
+	for _, data := range perfdata {
+		total += int(data.ErrFdUnavail)
+		total += int(data.ErrAddRunAvail)
+		total += int(data.ErrFtabFull)
+		total += int(data.ErrOther)
+	}
+
+	return total > 0
+}
+
+func PrintAggregateStats(perfdata []*PerfData, workers int) {
+	var totalReq float64 = 0
+	var totalRep float64 = 0
+	var errs float64 = 0
+
+	var repliesPerSec float64 = 0
+	var concurr float64 = 0
+	var connTimeAvg float64 = 0
+	var replyTime float64 = 0
+	
+	for _, data := range perfdata {
+		totalReq += data.TotalRequests
+		totalRep += data.TotalReplies
+		errs += data.ErrTotal
+
+		connTimeAvg += data.ConnectionTimeAvg
+		concurr += data.ConcurrentConnections
+		repliesPerSec += data.RepliesPerSecAvg
+		replyTime += data.ReplyTimeResponse
+	}
+
+	fmt.Println("\nTotalRequests:", int64(totalReq))
+	fmt.Println("TotalReplies:", int64(totalRep))
+	fmt.Println("Errors:", int64(errs))
+	fmt.Println("Success rate:", totalRep/totalReq, "\n")
+
+	fmt.Println("ConnectionTimeAvg:", connTimeAvg/float64(workers))
+	fmt.Println("ConcurrentConnections:", int(concurr))
+	fmt.Println("RepliesPerSecAvg:", repliesPerSec/float64(workers))
+	fmt.Println("ReplyTimeResponse:", replyTime/float64(workers), "\n")
+	fmt.Println(int64(totalReq), "|", int64(totalRep), "|", int64(errs), "|", 
+		totalRep/totalReq, "|", 
+		connTimeAvg/float64(workers), "|", int(concurr), "|", 
+		repliesPerSec/float64(workers), "|",
+		replyTime/float64(workers))
+}

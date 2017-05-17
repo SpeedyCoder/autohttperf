@@ -198,6 +198,7 @@ func RunManualBenchmark(workers []*Worker) {
 		log.Printf("Manual benchmark did not fully succeed")
 	}
 
+
 	// Write the TSV header
 	if !*skipheader {
 		WriteTSVHeader(os.Stdout)
@@ -208,7 +209,17 @@ func RunManualBenchmark(workers []*Worker) {
 		if *dumpraw {
 			log.Printf("Client %d output: \n%s\n", idx, perfdata.Raw)
 		}
-		WriteTSVParseData(os.Stdout, perfdata)
+		// WriteTSVParseData(os.Stdout, perfdata)
+		PrintAggregateStats(data, len(workers))
+	}
+
+	if HasClientErrors(data) {
+		log.Println("Client error occurred.")
+		for idx, perfdata := range data {
+			log.Printf("Client %d errors:", idx)
+			log.Printf("Errors: fd-unavail %v addrunavail %v ftab-full %v other %v", 
+				perfdata.ErrFdUnavail, perfdata.ErrAddRunAvail, perfdata.ErrFtabFull, perfdata.ErrOther)
+		}
 	}
 }
 
@@ -238,7 +249,7 @@ var numErrors *int = flag.Int("numerrors", 500, "The maximum acceptable number o
 var cooldown *int = flag.Int("cooldown", 3, "The number of steps to take following an 'error state' (stress only)")
 var sleep *int = flag.Int("sleeptime", 5, "The amount of time (in seconds) to sleep between each round (stress only)")
 var startRate *int = flag.Int("startrate", 100, "The connection start rate for the stress test")
-var dumpraw *bool = flag.Bool("dumpraw", true, "Dump the raw client output to stderr")
+var dumpraw *bool = flag.Bool("dumpraw", false, "Dump the raw client output to stderr")
 
 var PrintUsage = func() {
 	fmt.Fprintf(os.Stderr, "Usage of %s: \"host1:port1\" ...\n", os.Args[0])
