@@ -209,9 +209,9 @@ func RunManualBenchmark(workers []*Worker) {
 		if *dumpraw {
 			log.Printf("Client %d output: \n%s\n", idx, perfdata.Raw)
 		}
-		// WriteTSVParseData(os.Stdout, perfdata)
-		PrintAggregateStats(data, len(workers))
+		// WriteTSVParseData(os.Stdout, perfdata)	
 	}
+	PrintAggregateStats(data, len(workers))
 
 	if HasClientErrors(data) {
 		log.Println("Client error occurred.")
