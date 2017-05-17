@@ -5,6 +5,7 @@ import "io"
 import "log"
 import "strings"
 import "reflect"
+import "os"
 
 // The 'Raw' field is omitted here, since all of the data is already included
 var fieldNames = []string{"BenchmarkId", "BenchmarkDate", "ArgHost", "ArgPort", "ArgURL", "ArgNumConnections", "ArgConnectionRate", "ArgRequestsPerConnection", "ArgDuration", "ConnectionBurstLength", "TotalConnections", "TotalRequests", "TotalReplies", "TestDuration", "ConnectionsPerSecond", "MsPerConnection", "ConcurrentConnections", "ConnectionTimeMin", "ConnectionTimeAvg", "ConnectionTimeMax", "ConnectionTimeMedian", "ConnectionTimeStddev", "ConnectionTimeConnect", "RepliesPerConnection", "RequestsPerSecond", "MsPerRequest", "RequestSize", "RepliesPerSecMin", "RepliesPerSecAvg", "RepliesPerSecMax", "RepliesPerSecStddev", "RepliesPerSecNumSamples", "ReplyTimeResponse", "ReplyTimeTransfer", "ReplySizeHeader", "ReplySizeContent", "ReplySizeFooter", "ReplySizeTotal", "ReplyStatus_1xx", "ReplyStatus_2xx", "ReplyStatus_3xx", "ReplyStatus_4xx", "ReplyStatus_5xx", "CpuTimeUser", "CpuTimeSystem", "CpuPercUser", "CpuPercSystem", "CpuPercTotal", "NetIOValue", "NetIOUnit", "NetIOBytesPerSecond", "ErrTotal", "ErrClientTimeout", "ErrSocketTimeout", "ErrConnectionRefused", "ErrConnectionReset", "ErrFdUnavail", "ErrAddRunAvail", "ErrFtabFull", "ErrOther"}
@@ -140,11 +141,23 @@ func PrintAggregateStats(perfdata []*PerfData, workers int) {
 	fmt.Printf("RepliesPerSecAvg: %.2f\n", repliesPerSec/float64(workers))
 	fmt.Printf("ReplyTimeResponse: %.2f\n\n", replyTime/float64(workers))
 
-	fmt.Printf("%.2f|%.2f|%v|%v|%v|%.2f|%.2f|%v|%.2f|%.2f\n\n", 
+	res := fmt.Sprintf("%.2f|%.2f|%v|%v|%v|%.2f|%.2f|%v|%.2f|%.2f\n", 
 		connRate, reqRate,
 		int64(totalReq), int64(totalRep), int64(errs),
 		totalRep/totalReq, 
 		connTimeAvg/float64(workers), int(concurr), 
 		repliesPerSec/float64(workers),
 		replyTime/float64(workers))
+	fmt.Println(res)
+
+	// Write the result to the file
+	file, err := os.OpenFile("results.txt", os.O_RDWR|os.O_APPEND, 0666);
+	if err != nil {
+		log.Println(err)
+	}
+	_, err = file.WriteString(res)
+	if err != nil {
+		log.Println(err)
+	}
+	file.Close()
 }

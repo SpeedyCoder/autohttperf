@@ -79,10 +79,12 @@ func (h *HTTPerf) Benchmark(args *Args, result *Result) error {
 	log.Printf("   [%p] Process successfully started with PID: %d", args, cmd.Process.Pid)
 
 	output, err := ioutil.ReadAll(outpipe)
+	log.Println("Finished reading stdout.")
 	if err != nil {
 		return errors.New(fmt.Sprintf(ERR_READOUT, err.Error()))
 	}
 	errout, err := ioutil.ReadAll(errpipe)
+	log.Println("Finished reading stderr.")
 	if err != nil {
 		return errors.New(fmt.Sprintf(ERR_READERR, err.Error()))
 	}
@@ -93,6 +95,7 @@ func (h *HTTPerf) Benchmark(args *Args, result *Result) error {
 	log.Printf("-- [%p] Command joined and finished", args)
 
 	if err != nil {
+		log.Println("Error:", err)
 		return errors.New(fmt.Sprintf(ERR_WAIT, cmd.Process.Pid))
 	}
 
