@@ -46,6 +46,7 @@ type PerfData struct {
 	// need to be changed.
 
 	Raw string
+	All []float64
 	ConnectionBurstLength,
 	TotalConnections, TotalRequests, TotalReplies, TestDuration,
 	ConnectionsPerSecond, MsPerConnection, ConcurrentConnections,

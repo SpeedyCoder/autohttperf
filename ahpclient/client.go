@@ -6,6 +6,7 @@ import "log"
 import "os"
 import "net/rpc"
 import "time"
+import "strings"
 
 // Runs a benchmark distributed over a set of clients. Returns a slice of the
 // resulting PerfData structures and a boolean flags indicating if all workers
@@ -262,6 +263,12 @@ var PrintUsage = func() {
 
 func main() {
 	flag.Parse()
+	f, err := os.Create("results.csv")
+	if err != nil {
+		log.Println("Error with output file:", err)
+	}
+	f.WriteString(strings.Join(iFieldNames, "|") + "\n")
+	f.Close()
 
 	if *help {
 		PrintUsage()

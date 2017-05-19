@@ -6,6 +6,7 @@ import "log"
 import "strings"
 import "reflect"
 import "os"
+import "math"
 
 // The 'Raw' field is omitted here, since all of the data is already included
 var fieldNames = []string{"BenchmarkId", "BenchmarkDate", "ArgHost", "ArgPort", "ArgURL", "ArgNumConnections", "ArgConnectionRate", "ArgRequestsPerConnection", "ArgDuration", "ConnectionBurstLength", "TotalConnections", "TotalRequests", "TotalReplies", "TestDuration", "ConnectionsPerSecond", "MsPerConnection", "ConcurrentConnections", "ConnectionTimeMin", "ConnectionTimeAvg", "ConnectionTimeMax", "ConnectionTimeMedian", "ConnectionTimeStddev", "ConnectionTimeConnect", "RepliesPerConnection", "RequestsPerSecond", "MsPerRequest", "RequestSize", "RepliesPerSecMin", "RepliesPerSecAvg", "RepliesPerSecMax", "RepliesPerSecStddev", "RepliesPerSecNumSamples", "ReplyTimeResponse", "ReplyTimeTransfer", "ReplySizeHeader", "ReplySizeContent", "ReplySizeFooter", "ReplySizeTotal", "ReplyStatus_1xx", "ReplyStatus_2xx", "ReplyStatus_3xx", "ReplyStatus_4xx", "ReplyStatus_5xx", "CpuTimeUser", "CpuTimeSystem", "CpuPercUser", "CpuPercSystem", "CpuPercTotal", "NetIOValue", "NetIOUnit", "NetIOBytesPerSecond", "ErrTotal", "ErrClientTimeout", "ErrSocketTimeout", "ErrConnectionRefused", "ErrConnectionReset", "ErrFdUnavail", "ErrAddRunAvail", "ErrFtabFull", "ErrOther"}
@@ -102,66 +103,49 @@ func HasClientErrors(perfdata []*PerfData) bool {
 	return total > 0
 }
 
+var iFieldNames = []string{"ConnectionBurstLength", "TotalConnections", "TotalRequests", "TotalReplies", "TestDuration", "ConnectionsPerSecond", "MsPerConnection", "ConcurrentConnections", "ConnectionTimeMin", "ConnectionTimeAvg", "ConnectionTimeMax", "ConnectionTimeMedian", "ConnectionTimeStddev", "ConnectionTimeConnect", "RepliesPerConnection", "RequestsPerSecond", "MsPerRequest", "RequestSize", "RepliesPerSecMin", "RepliesPerSecAvg", "RepliesPerSecMax", "RepliesPerSecStddev", "RepliesPerSecNumSamples", "ReplyTimeResponse", "ReplyTimeTransfer", "ReplySizeHeader", "ReplySizeContent", "ReplySizeFooter", "ReplySizeTotal", "ReplyStatus_1xx", "ReplyStatus_2xx", "ReplyStatus_3xx", "ReplyStatus_4xx", "ReplyStatus_5xx", "CpuTimeUser", "CpuTimeSystem", "CpuPercUser", "CpuPercSystem", "CpuPercTotal", "NetIOValue", "ErrTotal", "ErrClientTimeout", "ErrSocketTimeout", "ErrConnectionRefused", "ErrConnectionReset", "ErrFdUnavail", "ErrAddRunAvail", "ErrFtabFull", "ErrOther"}
+var iType = []string{"max", "sum", "sum", "sum", "max", "sum", "avg", "sum", "min", "avg", "max", "avg", "avg", "avg", "avg", "sum", "avg", "avg", "min", "avg", "max", "avg", "sum", "avg", "avg", "avg", "avg", "avg", "avg", "sum", "sum", "sum", "sum", "sum", "avg", "avg", "avg", "avg", "avg", "avg", "sum", "sum", "sum", "sum", "sum", "sum", "sum", "sum", "sum"}
+
 func PrintAggregateStats(perfdata []*PerfData, workers int) {
-	var connRate float64 = 0
-	var reqRate float64 = 0
-
-	var totalReq float64 = 0
-	var totalRep float64 = 0
-	var errs float64 = 0
-
-	var repliesPerSec float64 = 0
-	var concurr float64 = 0
-	var connTimeAvg float64 = 0
-	var replyTime float64 = 0
-	var replyStatus2 float64 = 0
+	var res []float64 = make([]float64, 49)
+	for i, n := range perfdata[0].All {
+		res[i] = n
+	}
 	
-	for _, data := range perfdata {
-		connRate += data.ConnectionsPerSecond
-		reqRate += data.RequestsPerSecond
-		totalReq += data.TotalRequests
-		totalRep += data.TotalReplies
-		errs += data.ErrTotal
-
-		connTimeAvg += data.ConnectionTimeAvg
-		concurr += data.ConcurrentConnections
-		repliesPerSec += data.RepliesPerSecAvg
-		replyTime += data.ReplyTimeResponse
-		replyStatus2 += data.ReplyStatus_2xx
+	for _, data := range perfdata[1:] {
+		for i, n := range data.All {
+			switch iType[i] {
+				case "sum", "avg": {
+					res[i] += n
+				}
+				case "min": {
+					res[i] = math.Min(res[i], n)
+				}
+				case "max": {
+					res[i] = math.Max(res[i], n)
+				}
+			}
+			
+		}
 	}
 
-	fmt.Printf("Connection rate: %.2f\n", connRate)
-	fmt.Printf("Request rate: %.2f\n\n", reqRate)
+	for i, t := range iType {
+		if (t == "avg") {
+			res[i] = res[i]/float64(workers)
+		}
+	}
 
-	fmt.Println("\nTotalRequests:", int64(totalReq))
-	fmt.Println("TotalReplies:", int64(totalRep))
-	fmt.Println("Errors:", int64(errs))
-	fmt.Printf("Success rate: %.2f\n\n", totalRep/totalReq)
-
-	fmt.Printf("ConnectionTimeAvg: %.2f\n", connTimeAvg/float64(workers))
-	fmt.Println("ConcurrentConnections:", int(concurr))
-	fmt.Printf("RepliesPerSecAvg: %.2f\n", repliesPerSec/float64(workers))
-	fmt.Printf("ReplyTimeResponse: %.2f\n", replyTime/float64(workers))
-	fmt.Printf("ReplyStatus_2xx: %.v\n\n", replyStatus2)
-
-	res := fmt.Sprintf("%.2f|%.2f|%v|%v|%v|%.2f|%.2f|%v|%.2f|%.2f|%v\n", 
-		connRate, reqRate,
-		int64(totalReq), int64(totalRep), int64(errs),
-		totalRep/totalReq, 
-		connTimeAvg/float64(workers), int(concurr), 
-		repliesPerSec/float64(workers),
-		replyTime/float64(workers),
-		replyStatus2,)
-	fmt.Println(res)
+	sres := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(res)), "|"), "[]") + "\n"
+	fmt.Println(sres)
 
 	// Write the result to the file
-	file, err := os.OpenFile("results.txt", os.O_RDWR|os.O_APPEND, 0666);
+	file, err := os.OpenFile("results.csv", os.O_RDWR|os.O_APPEND, 0666);
 	if err != nil {
-		log.Println(err)
+		log.Println("Writing results error:", err)
 	}
-	_, err = file.WriteString(res)
+	_, err = file.WriteString(sres)
 	if err != nil {
-		log.Println(err)
+		log.Println("Writing results error:", err)
 	}
 	file.Close()
 }
