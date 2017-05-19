@@ -252,7 +252,7 @@ var skipheader *bool = flag.Bool("skipheader", false, "Do not print the CSV head
 // Stress test options
 var numErrors *int = flag.Int("numerrors", 500, "The maximum acceptable number of errors to indicate 'stressed' (stress only)")
 var cooldown *int = flag.Int("cooldown", 3, "The number of steps to take following an 'error state' (stress only)")
-var sleep *int = flag.Int("sleeptime", 5, "The amount of time (in seconds) to sleep between each round (stress only)")
+var sleep *int = flag.Int("sleeptime", 30, "The amount of time (in seconds) to sleep between each round (stress only)")
 var startRate *int = flag.Int("startrate", 100, "The connection start rate for the stress test")
 var dumpraw *bool = flag.Bool("dumpraw", false, "Dump the raw client output to stderr")
 
@@ -301,6 +301,7 @@ func main() {
 			log.Println("Connection Rate:", *connRate)
 			RunManualBenchmark(workers)
 			*connRate += *increment
+			time.Sleep(time.Second*time.Duration(*sleep))
 		}
 	}
 
